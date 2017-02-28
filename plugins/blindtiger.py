@@ -138,7 +138,7 @@ class BlindTiger(Plugin):
   def jokes(self, data):
     self.outputs.append([
       data['channel'],
-      "Sorry <@%s>, I can't do that" % data['user'],
+      ":hal: Sorry <@%s>, I can't do that" % data['user'],
     ])
 
 
