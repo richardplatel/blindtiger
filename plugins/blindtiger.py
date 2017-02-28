@@ -9,9 +9,9 @@ from rtmbot.core import Plugin, Job
 import click
 help_text="""
   Rowr! You can say:
-  `@blind.tiger please open the blind`
-  `@blind.tiger please close the blind`
-  `@blind.tiger stop`
+  `@blind.tiger please open the blind` | :full_moon:
+  `@blind.tiger please close the blind` | :new_moon:
+  `@blind.tiger stop` | :stop:
       """
 def do_open():
   click.click(2)
@@ -56,16 +56,27 @@ class BlindTiger(Plugin):
 
   def __init__(self, name=None, slack_client=None, plugin_config=None):
     super(BlindTiger, self).__init__(name, slack_client, plugin_config)
-    self.version = 'v0.1a'
+    self.version = 'v0.1b'
     click.init()
     self.my_id = plugin_config['bot_id']
     self.stale_seconds = plugin_config.get('stale_seconds', 5.0)
     self.atme = '<@{}>'.format(self.my_id)
     self.funcs = {
-      self.atme + ' please open the blind' : self.open_blind,
+      # opens
+      self.atme + ' please open the blind'  : self.open_blind,
+      ':full_moon'                          : self.open_blind,
+      ':sun'                                : self.open_blind,
+
+      # closes
       self.atme + ' please close the blind' : self.close_blind, 
-      self.atme + ' stop' : self.stop_blind,
-      self.atme + ' help' : self.show_help,
+      ':new_moon'                           : self.close_blind, 
+
+      # stops
+      self.atme + ' stop'                   : self.stop_blind,
+      ':stop:'                              : self.stop_blind,
+
+      # other
+      self.atme + ' help'                   : self.show_help,
       self.atme + ' open the pod bay doors' : self.jokes,
     }
     broadcast(slack_client, 
@@ -127,7 +138,7 @@ class BlindTiger(Plugin):
   def jokes(self, data):
     self.outputs.append([
       data['channel'],
-      "Sorry @%s, I can't do that" % data['user'],
+      "Sorry <@%s>, I can't do that" % data['user'],
     ])
 
 
