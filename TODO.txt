@@ -1,3 +1,5 @@
 #TODOs
+fix jokes @
+add emojii commands
 implement [halfway]
-put in git
+run out of git dir
