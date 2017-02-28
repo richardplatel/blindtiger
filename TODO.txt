@@ -1,2 +1,7 @@
 #TODOs
 implement [halfway]
+Cleanup code:
+  * cleanup say/broadcast code
+  * put a decorator around all the funcs such that the return value of the
+      func will be said on data['channel']
+
