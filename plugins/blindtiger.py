@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 import json
 import time
-from time import gmtime, strftime
+from time import localtime, gmtime, strftime
 import socket
+from functools import wraps
 
 from rtmbot.core import Plugin, Job
 
@@ -21,20 +22,42 @@ def do_close():
 
 def say(slack_client, channel, text):
   slack_client.api_call(
-    "chat.meMessage", channel=channel, text=text)
+    "chat.postMessage", channel=channel, text=text, as_user=True)
+
+_debug_channel = None
+def debug(slack_client, text):
+  global _debug_channel
+  if _debug_channel is None:
+    r = slack_client.api_call("groups.list", exclude_archived=True, exclude_members=True)
+    if r.get('ok'):
+      for g in r['groups']:
+        if g['name'] == 'pest-toast':
+          _debug_channel = g['id']
+  if _debug_channel:
+    slack_client.api_call(
+      "chat.postMessage", channel=_debug_channel, text=text, as_user=True)
 
 def my_channels(slack_client):
   ret = list()
-  r = slack_client.api_call("channels.list", exclude_archived=True)
+  r = slack_client.api_call("channels.list", exclude_archived=True, exclude_members=True)
   if r.get('ok'):
     for c in r['channels']:
       if c['is_member']:
         ret.append(c['id'])
-  r = slack_client.api_call("groups.list", exclude_archived=True)
+  r = slack_client.api_call("groups.list", exclude_archived=True, exclude_members=True)
   if r.get('ok'):
     for g in r['groups']:
       ret.append(g['id'])
   return ret
+
+def cmd(fn):
+  # decorator for plugin methods that do a thing then say something
+  # back in to the channel
+  @wraps(fn)
+  def wrapped(s, d):
+    ret = fn(s, d)
+    s.outputs.append([d['channel'], ret])
+  return wrapped
 
 def broadcast(slack_client, message):
   for c in my_channels(slack_client):
@@ -47,7 +70,7 @@ def getNetworkIp():
 
 class Morning(Job):
   def run(self, slack_client):
-    if strftime("%H %M", gmtime()) == '13 00':
+    if strftime("%H %M", localtime()) == '08 00':
       do_open()
       return [ [x , "Rawr! Good Morning! Time to open the blinds!"] for x in my_channels(slack_client) ]
     return []
@@ -79,7 +102,7 @@ class BlindTiger(Plugin):
       self.atme + ' help'                   : self.show_help,
       self.atme + ' open the pod bay doors' : self.jokes,
     }
-    broadcast(slack_client, 
+    debug(slack_client, 
       "Rowr! Blind tiger %s online from %s.\n%s" % (
         self.version, str(getNetworkIp()), help_text))
     self.last_op = None
@@ -103,42 +126,32 @@ class BlindTiger(Plugin):
       if data['text'].startswith(self.atme):
         self.show_help(data)
 
+  @cmd
   def stop_blind(self, data):
     if self.last_op == 'open':
       do_open()
     else:
       do_close()
-    self.outputs.append([
-      data['channel'],
-      "Rowr?!"
-    ])
+    return "Rowr?!"
 
+  @cmd
   def open_blind(self, data):
     do_open()
     self.last_op = 'open'
-    self.outputs.append([
-      data['channel'],
-      "Rowr rowr!"
-    ])
+    return "Rowr rowr!"
 
+  @cmd
   def close_blind(self, data):
     do_close()
     self.last_op = 'close'
-    self.outputs.append([
-      data['channel'],
-      "Rowr rowr rowr!"
-    ])
+    return "Rowr rowr rowr!"
   
+  @cmd
   def show_help(self, data):
-    self.outputs.append([
-      data['channel'],
-      help_text
-    ])
+    return help_text
 
+  @cmd
   def jokes(self, data):
-    self.outputs.append([
-      data['channel'],
-      ":hal: Sorry <@%s>, I can't do that" % data['user'],
-    ])
+    return ":hal: Sorry <@%s>, I can't do that" % data['user']
 
 
